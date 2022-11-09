@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
+import os
 import subprocess
+import sys
 from pathlib import Path
 from typing import List, Tuple
 
@@ -27,9 +29,13 @@ def call_script(shell_commands: List[str], level=1):
     return outputs
 
 
-def comment_out_lines_in_file(file_path):
+def comment_out_all_lines_in_file(file_path):
     file_path_p = Path(file_path)
-    assert file_path_p.is_file()
+    if not file_path_p.is_file():
+        print(
+            f"could not find {file_path_p!r} therefore ignoring commenting out all lines"
+        )
+        return
     try:
         lines = file_path_p.read_text(encoding="utf8").splitlines()
         commented_lines = "\n# activate_autocompletion removed # ".join([""] + lines)
@@ -41,6 +47,7 @@ def comment_out_lines_in_file(file_path):
 
 
 ACTIVATE_AUTO_COMPLETE_STR = """
+# enable bash completion in interactive shells
 if ! shopt -oq posix; then
     if [ -f /usr/share/bash-completion/bash_completion ]; then
     . /usr/share/bash-completion/bash_completion
@@ -51,9 +58,19 @@ fi
 """
 
 
-def add_autocomplete_to_bashrc():
-    with Path("~/.bashrc").expanduser().open(mode="a", encoding="utf-8") as file:
+def add_autocomplete_to_bashrc_of_user(username):
+    with Path(f"/home/{username}/.bashrc").expanduser().open(
+        mode="a", encoding="utf-8"
+    ) as file:
         file.write(ACTIVATE_AUTO_COMPLETE_STR)
+
+
+def get_username_even_if_called_with_sudo():
+    username = None
+    for varname in ["SUDO_USER", "USERNAME", "USER"]:
+        username = os.environ.get(varname, None)
+        if username and username != "root":
+            return username
 
 
 def activate_autocompletion():
@@ -63,18 +80,11 @@ def activate_autocompletion():
     """
     commands = SCRIPT.splitlines()
     call_script(commands)
-    comment_out_lines_in_file("/etc/apt/apt.conf.d/docker-clean")
-    add_autocomplete_to_bashrc()
+    comment_out_all_lines_in_file("/etc/apt/apt.conf.d/docker-clean")
+    username = get_username_even_if_called_with_sudo()
+    print(f"found username if if called with sudo: {username}")
+    add_autocomplete_to_bashrc_of_user(username=username)
 
-
-# enable bash completion in interactive shells
-# if ! shopt -oq posix; then
-#  if [ -f /usr/share/bash-completion/bash_completion ]; then
-#    . /usr/share/bash-completion/bash_completion
-#  elif [ -f /etc/bash_completion ]; then
-#    . /etc/bash_completion
-#  fi
-# fi
 
 if __name__ == "__main__":
     activate_autocompletion()
