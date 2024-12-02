@@ -76,7 +76,7 @@ def get_username_even_if_called_with_sudo():
 def activate_autocompletion():
     SCRIPT = """
     sudo apt-get update
-    sudo apt-get install bash-completion 
+    sudo apt-get install --reinstall bash-completion 
     """
     commands = SCRIPT.splitlines()
     call_script(commands)
